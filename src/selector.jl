@@ -19,15 +19,6 @@ const SelectorOrStandard = Union{Selector,StandardIndices}
 val(sel::Selector) = sel.val
 rebuild(sel::Selector, val) = basetypeof(sel)(val)
 
-@inline maybeselector(I...) = maybeselector(I)
-@inline maybeselector(I::Tuple) = map(maybeselector, I)
-# Int AbstractArray and Colon do normal indexing
-@inline maybeselector(i::StandardIndices) = i
-# Selectors are allready selectors
-@inline maybeselector(i::Selector) = i
-# Anything else becomes `At`
-@inline maybeselector(i) = At(i)
-
 """
     At(x, atol, rtol)
     At(x; atol=nothing, rtol=nothing)

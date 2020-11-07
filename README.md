@@ -188,7 +188,7 @@ regular indexing) the `At` selector is assumed, and can be dropped completely:
 ```julia
 julia> A = DimArray(rand(3, 3), (X(Val((:a, :b, :c))), Y([25.6, 25.7, 25.8])));
 
-julia> A[:b, 25.8]
+julia> A[At(:b), At(25.8)]
 0.61839141062599
 ```
 
@@ -202,11 +202,11 @@ runtime cost:
 julia> A = DimArray(rand(3, 3), (cat=Val((:a, :b, :c)),
                                  val=Val((5.0, 6.0, 7.0))));
 
-julia> @btime $A[:a, 7.0]
+julia> @btime $A[At(:a), At(7.0)]
   2.094 ns (0 allocations: 0 bytes)
 0.25620608873275397
 
-julia> @btime $A[cat=:a, val=7.0]
+julia> @btime $A[cat=At(:a), val=At(7.0)]
   2.091 ns (0 allocations: 0 bytes)
 0.25620608873275397
 ```

@@ -140,11 +140,11 @@ Base.:(==)(A1::AbstractDimArray, A2::AbstractDimArray) =
 
 # Selector indexing without dim wrappers. Must be in the right order!
 @propagate_inbounds Base.getindex(A::AbstractDimArray, i, I...) =
-    getindex(A, sel2indices(A, maybeselector(i, I...))...)
+    getindex(A, sel2indices(A, i, I...)...)
 @propagate_inbounds Base.view(A::AbstractDimArray, i, I...) =
-    view(A, sel2indices(A, maybeselector(i, I...))...)
+    view(A, sel2indices(A, i, I...)...)
 @propagate_inbounds Base.setindex!(A::AbstractDimArray, x, i, I...) =
-    setindex!(A, x, sel2indices(A, maybeselector(i, I...))...)
+    setindex!(A, x, sel2indices(A, i, I...)...)
 
 
 # Methods that create copies of an AbstractDimArray #######################################
