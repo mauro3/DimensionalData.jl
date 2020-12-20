@@ -43,9 +43,11 @@ Base.reverse(::ForwardArray) = ReverseArray()
 Base.reverse(::ReverseRelation) = ForwardRelation()
 Base.reverse(::ForwardRelation) = ReverseRelation()
 # Span
-Base.reverse(::Type{<:IndexOrder}, span::Regular) = reverse(span)
 Base.reverse(::Type{<:SubOrder}, span::Span) = span
+Base.reverse(::Type{<:IndexOrder}, span::Irregular) = span
+Base.reverse(::Type{<:IndexOrder}, span::Span) = reverse(span)
 Base.reverse(span::Regular) = Regular(-step(span))
+Base.reverse(span::Explicit) = Explicit(reverse(val(span), dims=1))
 
 _reversedata(A::AbstractDimArray, dimnum) = reverse(parent(A); dims=dimnum)
 _reversedata(s::AbstractDimStack, dimnum) =
