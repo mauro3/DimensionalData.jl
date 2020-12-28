@@ -47,7 +47,7 @@ Base.reverse(::Type{<:SubOrder}, span::Span) = span
 Base.reverse(::Type{<:IndexOrder}, span::Irregular) = span
 Base.reverse(::Type{<:IndexOrder}, span::Span) = reverse(span)
 Base.reverse(span::Regular) = Regular(-step(span))
-Base.reverse(span::Explicit) = Explicit(reverse(val(span), dims=1))
+Base.reverse(span::Explicit) = Explicit(map(reverse, val(span)))
 
 _reversedata(A::AbstractDimArray, dimnum) = reverse(parent(A); dims=dimnum)
 _reversedata(s::AbstractDimStack, dimnum) =

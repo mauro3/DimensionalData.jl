@@ -308,11 +308,12 @@ val(span::Irregular) = span.bounds
 Explicit span is explicitly listed for every interval. This uses a matrix with rows 
 matching the index length, and a column for span start and end values.
 """
-struct Explicit{B<:AbstractMatrix} <: Span
-    boundsmatrix::B
+struct Explicit{B<:Tuple{<:AbstractVector,<:AbstractVector}} <: Span
+    val::B
 end
+Explicit(a::AbstractVector, b::AbstractVector) = Explicit((a, b))
 
-val(span::Explicit) = span.boundsmatrix
+val(span::Explicit) = span.val
 
 """
 Supertype for all `Dimension` modes.
@@ -444,7 +445,7 @@ _bounds(mode::AbstractSampled, dim) = _bounds(sampling(mode), span(mode), mode, 
 _bounds(::Points, span, mode::AbstractSampled, dim) = _bounds(indexorder(mode), mode, dim)
 _bounds(::Intervals, span::Irregular, mode::AbstractSampled, dim) = bounds(span)
 _bounds(::Intervals, span::Explicit, mode::AbstractSampled, dim) = 
-    _sortbounds(mode, (val(span)[1, 1], val(span)[end, 2]))
+    _sortbounds(mode, (val(span)[1][1], val(span)[2][end]))
 _bounds(::Intervals, span::Regular, mode::AbstractSampled, dim) =
     _bounds(locus(mode), indexorder(mode), span, mode, dim)
 _bounds(::Start, ::ForwardIndex, span, mode, dim) = first(dim), last(dim) + step(span)
@@ -473,9 +474,9 @@ end
 _slicespan(m::IndexMode, index, i) =
     _slicespan(span(m), m, index, _maybeflip(indexorder(m), index, i))
 _slicespan(span::Explicit, m::IndexMode, index, i::Int) = 
-    Irregular(val(span)[i, 1], val(span)[i, 2])
+    Irregular(val(span)[1][i], val(span)[2][i])
 _slicespan(span::Explicit, m::IndexMode, index, i::AbstractArray) = 
-    Explicit(val(span)[i, :])
+    Explicit(val(span)[1][i], val(span)[2][i])
 _slicespan(span::Irregular, m::IndexMode, index, i) =
     Irregular(_slicespan(locus(m), span, index, i))
 _slicespan(locus::Start, span::Irregular, index, i) =
