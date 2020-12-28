@@ -157,10 +157,10 @@ end
 @inline slicedims(dims::Tuple{}, I::Tuple{}) = (), ()
 @inline slicedims(d::Dimension, i::Colon) = (d,), ()
 @inline slicedims(d::Dimension, i::Integer) =
-    (), (rebuild(d, d[relate(d, i)], slicemode(mode(d), val(d), i)),)
+    (), (rebuild(d, d[relate(d, i)], _slicemode(mode(d), val(d), i)),)
 # TODO deal with unordered arrays trashing the index order
 @inline slicedims(d::Dimension{<:Union{AbstractArray,Val}}, i::AbstractArray) =
-    (rebuild(d, d[relate(d, i)], slicemode(mode(d), val(d), i)),), ()
+    (rebuild(d, d[relate(d, i)], _slicemode(mode(d), val(d), i)),), ()
 
 @inline relate(d::Dimension, i) = _maybeflip(relation(d), d, i)
 

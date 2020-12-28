@@ -159,7 +159,7 @@ name(dim::Dimension) = name(typeof(dim))
 units(dim::Dimension) =
     metadata(dim) isa NoMetadata ? nothing : get(metadata(dim), :units, nothing)
 
-bounds(dim::Dimension) = bounds(mode(dim), dim)
+bounds(dim::Dimension) = _bounds(mode(dim), dim)
 
 modetype(dim::Dimension) = typeof(mode(dim))
 modetype(::Type{<:Dimension{<:Any,Mo}}) where Mo = Mo
