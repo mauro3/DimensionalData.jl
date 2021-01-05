@@ -351,13 +351,14 @@ function slicedims end
 end
 @inline slicedims(dims::Tuple, refdims::Tuple, I::Tuple{<:CartesianIndex}) =
     slicedims(dims, refdims, Tuple(I))
+@inline slicedims(dims::Tuple, I::Tuple{}) = dims, ()
 @inline slicedims(dims::Tuple{}, I::Tuple) = (), ()
-@inline slicedims(dims::DimTuple, I::Tuple) = begin
+@inline slicedims(dims::Tuple{}, I::Tuple{}) = (), ()
+@inline slicedims(dims::Tuple, I::Tuple) = begin
     d = slicedims(first(dims), first(I))
     ds = slicedims(tail(dims), tail(I))
     (d[1]..., ds[1]...), (d[2]..., ds[2]...)
 end
-@inline slicedims(dims::Tuple{}, I::Tuple{}) = (), ()
 @inline slicedims(d::Dimension, i::Colon) = (d,), ()
 @inline slicedims(d::Dimension, i::Integer) =
     (), (rebuild(d, d[relate(d, i)], slicemode(mode(d), val(d), i)),)

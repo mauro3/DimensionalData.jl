@@ -2,14 +2,15 @@ using DimensionalData, Test, LinearAlgebra, Statistics
 
 A = [1.0 2.0 3.0;
      4.0 5.0 6.0]
-dimz = (X([:a, :b]), Y(10.0:10.0:30.0))
-da1 = DimArray(A, dimz, :one)
-da2 = DimArray(Float32.(2A), dimz, :two)
-da3 = DimArray(Int.(3A), dimz, :three)
+x, y, z = X([:a, :b]), Y(10.0:10.0:30.0), Z()
+dimz = x, y
+da1 = DimArray(A, (x, y), :one)
+da2 = DimArray(Float32.(2A), (x, y), :two)
+da3 = DimArray(Int.(3A), (x, y), :three)
+da4 = DimArray(cat(4A, 5A, 6A; dims=3), (x, y, z), :extradim)
 
 s = DimStack((da1, da2, da3))
-s.layerdims
-DimensionalData.layerdims(s)
+mixed = DimStack((da1, da2, da4))
 
 @testset "Constructors" begin
     @test DimStack((one=A, two=2A, three=3A), dimz) == s
@@ -20,7 +21,7 @@ end
 @testset "Properties" begin
     @test DimensionalData.dims(s) == dims(da1)
     @test keys(data(s)) == (:one, :two, :three)
-    @test keys(data(s)) == (:one, :two, :three)
+    @test keys(data(mixed)) == (:one, :two, :extradim)
     da1x = s[:one]
     @test parent(da1x) === parent(da1)
     @test dims(da1x) === dims(da1)
@@ -40,6 +41,15 @@ end
         linear1d = s[Y(1)][1:2]
         @test linear1d isa DimStack
         @test data(linear1d) == (one=[1.0, 4.0], two=[2.0f0, 8.0f0], three=[3, 12])
+    end
+    @testset "mixed" begin
+        noz = mixed[Z(1)]
+        @test dims(noz) == dims(da1)
+        @test refdims(noz) == (Z(1; mode=NoIndex()),)
+        @test mixed[X(1), Y(1)] == (one=1.0, two=2.0f0, extradim=mixed[:extradim][1, 1, :])
+        linear = mixed[1:2]
+        @test linear isa NamedTuple
+        @test linear == (one=[1.0, 4.0], two=[2.0f0, 8.0f0], extradim=[4.0, 16.0])
     end
 end
 
@@ -93,8 +103,6 @@ end
     @test dims(map(a -> a .* 2, s)) == dims(DimStack(2da1, 2da2, 2da3))
     @test map(a -> a[1], s) == (one=1.0, two=2.0, three=3.0)
 end
-
-
 
 @testset "Methods with no arguments" begin
     @testset "permuting methods" begin
