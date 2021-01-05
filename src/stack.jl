@@ -3,7 +3,7 @@ Supertype for dimensional stacks.
 
 These have multiple layers of data, but share dimensions.
 """
-abstract type AbstractDimStack{L,N,D} end
+abstract type AbstractDimStack{L,D} end
 
 """
     DimStack(data::AbstractDimArray...)
@@ -11,13 +11,13 @@ abstract type AbstractDimStack{L,N,D} end
     DimStack(data::NamedTuple{Keys,Vararg{<:AbstractDimArray}})
     DimStack(data::NamedTuple, dims::DimTuple; metadata=nothing)
 
-DimStack holds multiple objects with the same dimensions, in a `NamedTuple`.
+DimStack holds multiple objects sharing some dimensions, in a `NamedTuple`.
 Indexing operates as for [`AbstractDimArray`](@ref), except it occurs for all
 data layers of the stack simulataneously. Layer objects can hold values of any type.
 
 DimStack can be constructed from multiple `AbstractDimArray` or a `NamedTuple`
 of `AbstractArray` and a matching `dims` `Tuple`. If `AbstractDimArray`s have
-the same name they will be given the name `:layer1`, substitiuting the actual
+the same name they will be given the name `:layer1`, substitiuting the
 layer number for `1`.
 
 `getindex` with `Int` or `Dimension`s or `Selector`s that resolve to `Int` will
@@ -29,7 +29,7 @@ Indexing with a `Vector` or `Colon` will return another `DimStack` where
 all data layers have been sliced.  `setindex!` must pass a `Tuple` or `NamedTuple` maching
 the layers.
 
-Most `Base` and `Statistics` methods that apply gto `AbstractArray` can be used on
+Most `Base` and `Statistics` methods that apply to `AbstractArray` can be used on
 all layers of the stack simulataneously. The result is a `DimStack`, or
 a `NamedTuple` if methods like `mean` are used without `dims` arguments, and
 return a single non-array value.
@@ -82,50 +82,61 @@ and data: 3-element Array{Float64,1}
 ```
 
 """
-struct DimStack{L,N,D,R,M} <: AbstractDimStack{L,N,D}
+struct DimStack{L,D,R,M,LD} <: AbstractDimStack{L,D}
     data::L
     dims::D
     refdims::R
     metadata::M
-    DimStack(data::L, dims::D, refdims::R, metadata::M) where {L,D,R,M} = begin
+    layerdims::LD
+    function DimStack(data::L, dims::D, refdims::R, metadata::M, layerdims::LD) where {L,D,R,M,LD}
         N = length(dims)
-        new{L,N,D,R,M}(data, dims, refdims, metadata)
+        new{L,D,R,M,LD}(data, dims, refdims, metadata, layerdims)
     end
 end
 DimStack(das::AbstractDimArray...) = DimStack(das)
 function DimStack(das::Tuple{Vararg{<:AbstractDimArray}})
     DimStack(NamedTuple{uniquekeys(das)}(das))
 end
-function DimStack(das::NamedTuple{<:Any,<:Tuple{Vararg{<:AbstractDimArray}}})
-    data = map(parent, das)
-    dims = comparedims(das...)
-    meta = map(metadata, das)
+function DimStack(As::NamedTuple{<:Any,<:Tuple{Vararg{<:AbstractDimArray}}})
+    data = map(parent, As)
+    dims_ = combinedims(As...)
     refdims = () # das might have different refdims
-    DimStack(data, dims, refdims, meta)
+    meta = map(metadata, As)
+    layerdims = map(As) do A # Just keep the type information.
+        _basedim(dims(A))
+    end
+    DimStack(data, dims_, refdims, meta, layerdims)
 end
 function DimStack(data::NamedTuple, dims::DimTuple; refdims=(), metadata=nothing)
-    DimStack(data, formatdims(first(data), dims), refdims, metadata)
+    layerdims = map(_ -> _basedim(dims), data)
+    DimStack(data, formatdims(first(data), dims), refdims, metadata, layerdims)
 end
+
 data(s::AbstractDimStack) = s.data
 dims(s::DimStack) = s.dims
 metadata(s::AbstractDimStack) = s.metadata
+layerdims(s::AbstractDimStack) = s.layerdims
+
+_basedim(ds::Tuple) = map(_basedim, ds)
+_basedim(d::Dimension) = basetypeof(d)()
 
 Base.keys(s::AbstractDimStack) = keys(data(s))
 Base.values(s::AbstractDimStack) = values(dimarrays(s))
 Base.first(s::AbstractDimStack) = first(dimarrays(s))
 # Only compare data and dim - metadata and refdims can be different
 Base.:(==)(s1::AbstractDimStack, s2::AbstractDimStack) =
-    data(s1) == data(s2) && dims(s1) == dims(s2)
+    data(s1) == data(s2) && dims(s1) == dims(s2) && layerdims(s1) == layerdims(s2)
 
-rebuild(s::AbstractDimStack, data, dims=dims(s), refdims=refdims(s), metadata=metadata(s)) =
-    basetypeof(s)(data, dims, refdims, metadata)
+rebuild(s::AbstractDimStack, data, dims=dims(s), refdims=refdims(s), 
+        metadata=metadata(s), layerdims=layerdims(s)) =
+    basetypeof(s)(data, dims, refdims, metadata, layerdims)
 
 rebuildsliced(s::AbstractDimStack, data, I) = rebuild(s, data, slicedims(s, I)...)
 
 function dimarrays(s::AbstractDimStack{<:NamedTuple{Keys}}) where Keys
-    NamedTuple{Keys}(map(Keys, values(data(s))) do k, A
-        DimArray(A, dims(s), refdims(s), k, nothing)
-    end)
+    map(Keys, values(data(s)), values(layerdims(s))) do k, A, ld
+        DimArray(A, dims(s, ld), refdims(s), k, NoMetadata())
+    end |> NamedTuple{Keys}
 end
 
 Adapt.adapt_structure(to, s::AbstractDimStack) = map(A -> adapt(to, A), s)
@@ -165,7 +176,7 @@ for fname in (:rotl90, :rotr90, :rot180, :PermutedDimsArray, :permutedims)
         map(A -> (Base.$fname)(A, args...), s)
 end
 
-# Base/Statistics methods with keyword arguments that return a DimStack
+# Methods with keyword arguments that return a DimStack
 for (mod, fnames) in
     (:Base => (:sum, :prod, :maximum, :minimum, :extrema, :dropdims),
      :Statistics => (:cor, :cov, :mean, :median, :std, :var))

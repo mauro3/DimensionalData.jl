@@ -459,7 +459,6 @@ function comparedims end
 @inline comparedims(a::DimTuple, ::Nothing) = a
 @inline comparedims(::Nothing, b::DimTuple) = b
 @inline comparedims(::Nothing, ::Nothing) = nothing
-
 # Cant use `map` here, tuples may not be the same length
 @inline comparedims(a::DimTuple, b::DimTuple) =
     (comparedims(first(a), first(b)), comparedims(tail(a), tail(b))...)
@@ -470,9 +469,23 @@ function comparedims end
 @inline comparedims(a::Dimension, b::AnonDim) = a
 @inline comparedims(a::AnonDim, b::Dimension) = b
 @inline comparedims(a::Dimension, b::Dimension) = begin
+    length(a) == length(b) || _dimsizeerror(a, b)
     basetypeof(a) == basetypeof(b) || _dimsmismatcherror(a, b)
     # TODO compare the mode, and maybe the index.
     return a
+end
+
+function combinedims end
+@inline combinedims(xs...) = combinedims(map(dims, xs)...)
+@inline combinedims(dt1::DimTuple) = dt1
+@inline combinedims(dt1::DimTuple, dt2::DimTuple, dimtuples::DimTuple...) =
+    reduce((dt2, dimtuples...); init=dt1) do dims1, dims2
+        _combinedims(dims1, dims2)
+    end
+# Cant use `map` here, tuples may not be the same length
+@inline _combinedims(a::DimTuple, b::DimTuple) = begin
+    comparedims(commondims(a, b), commondims(b, a))
+    (a..., otherdims(b, a)...)
 end
 
 """
@@ -480,7 +493,7 @@ end
 
 Will get the stride of the dimension relative to the other dimensions.
 
-This may or may not be eual to the stride of the related array,
+This may or may not be equal to the stride of the related array,
 although it will be for `Array`.
 
 ## Arguments
@@ -554,5 +567,6 @@ struct AlwaysTuple end
 @noinline _dimsnotdefinederror() = throw(ArgumentError("Object does not define a `dims` method"))
 @noinline _nolookuperror(lookup) = throw(ArgumentError("No $(basetypeof(lookup[1])) in dims"))
 @noinline _dimsmismatcherror(a, b) = throw(DimensionMismatch("$(basetypeof(a)) and $(basetypeof(b)) dims on the same axis"))
+@noinline _dimsizeerror(a, b) = throw(DimensionMismatch("Found both lengths $(length(a)) and $(lengt(b)) for $(basetypeof(a))"))
 @noinline _warnextradims(extradims) = @warn "$(map(basetypeof, extradims)) dims were not found in object"
 @noinline _errorextradims() = throw(ArgumentError("Some dims were not found in object"))

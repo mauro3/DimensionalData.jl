@@ -8,6 +8,8 @@ da2 = DimArray(Float32.(2A), dimz, :two)
 da3 = DimArray(Int.(3A), dimz, :three)
 
 s = DimStack((da1, da2, da3))
+s.layerdims
+DimensionalData.layerdims(s)
 
 @testset "Constructors" begin
     @test DimStack((one=A, two=2A, three=3A), dimz) == s
